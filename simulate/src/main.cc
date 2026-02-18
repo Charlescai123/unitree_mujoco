@@ -61,6 +61,59 @@ namespace
   mjModel *m = nullptr;
   mjData *d = nullptr;
 
+  bool kick_flag = false;
+
+  std::array<double, 3> kick_force = {0, 0, 0};
+
+  // GLFW keyboard callback
+  void KeyboardCallback(GLFWwindow* window, int key, int scancode, int act, int mods) {
+      if (act == GLFW_PRESS) {
+          kick_flag = true;
+          switch (key) {
+              case GLFW_KEY_W:  // Forward (+X)
+                  kick_force = {400, 0, 0};
+                  std::cout << "Kick forward!" << std::endl;
+                  break;
+              case GLFW_KEY_S:  // Backward (-X)
+                  kick_force = {-400, 0, 0};
+                  std::cout << "Kick backward!" << std::endl;
+                  break;
+              case GLFW_KEY_A:  // Left (-Y)
+                  kick_force = {0, -400, 0};
+                  std::cout << "Kick left!" << std::endl;
+                  break;
+              case GLFW_KEY_D:  // Right (+Y)
+                  kick_force = {0, 400, 0};
+                  std::cout << "Kick right!" << std::endl;
+                  break;
+              case GLFW_KEY_SPACE:  // Up (+Z)
+                  kick_force = {0, 0, 400};
+                  std::cout << "Kick up!" << std::endl;
+                  break;
+              case GLFW_KEY_LEFT_SHIFT:  // Down (-Z)
+                  kick_force = {0, 0, -400};
+                  std::cout << "Kick down!" << std::endl;
+                  break;
+              default:
+                  kick_flag = false; // No kick for other keys
+                  break;
+          }
+      }
+  }
+
+  // Apply kick force to the robot if kick_flag is set
+  void kick_dog(bool &kick_flag, mjModel* m, mjData* d) {
+      if (kick_flag) {
+          int body_id = mj_name2id(m, mjOBJ_BODY, "base_link"); // base_link
+          if (body_id >= 0) {
+              d->xfrc_applied[6*body_id + 0] = kick_force[0]; // Fx
+              d->xfrc_applied[6*body_id + 1] = kick_force[1]; // Fy
+              d->xfrc_applied[6*body_id + 2] = kick_force[2]; // Fz
+          }
+          kick_flag = false; // Reset kick flag after applying the force
+      }
+  }
+
   // control noise variables
   mjtNum *ctrlnoise = nullptr;
 
@@ -433,6 +486,21 @@ namespace
             bool misaligned =
                 mju_abs(Seconds(elapsedCPU).count() / slowdown - elapsedSim) > syncMisalign;
 
+            // Apply kick if requested
+            kick_dog(kick_flag, m, d);
+            // if (kick_flag) {
+            //     int body_id = mj_name2id(m, mjOBJ_BODY, "base_link"); // 或 base_link
+            //     if (body_id >= 0) {
+            //         // 给机器人一个向前的冲击力 Fx = 200N
+            //         d->xfrc_applied[6*body_id + 0] = 200; // Fx
+            //         d->xfrc_applied[6*body_id + 1] = 0;   // Fy
+            //         d->xfrc_applied[6*body_id + 2] = 50;  // Fz (轻微抬脚)
+            //     }
+
+            //     // 只踢一次，立即清除
+            //     kick_flag = false;
+            // }
+    
             // out-of-sync (for any reason): reset sync times, step
             if (elapsedSim < 0 || elapsedCPU.count() < 0 || syncCPU.time_since_epoch().count() == 0 ||
                 misaligned || sim.speed_changed)
@@ -639,6 +707,12 @@ int main(int argc, char **argv)
   auto sim = std::make_unique<mj::Simulate>(
       std::make_unique<mj::GlfwAdapter>(),
       &cam, &opt, &pert, /* is_passive = */ false);
+
+  GLFWwindow* window = glfwGetCurrentContext();
+  
+  // Register keyboard callback (GLFW API)
+  glfwSetKeyCallback(window, KeyboardCallback);
+
 
   // Load simulation configuration
   YAML::Node yaml_node = YAML::LoadFile("../config.yaml");
