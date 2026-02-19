@@ -86,11 +86,11 @@ namespace
                   kick_force = {0, 400, 0};
                   std::cout << "Kick right!" << std::endl;
                   break;
-              case GLFW_KEY_SPACE:  // Up (+Z)
+              case GLFW_KEY_Q:  // Up (+Z)
                   kick_force = {0, 0, 400};
                   std::cout << "Kick up!" << std::endl;
                   break;
-              case GLFW_KEY_LEFT_SHIFT:  // Down (-Z)
+              case GLFW_KEY_E:  // Down (-Z)
                   kick_force = {0, 0, -400};
                   std::cout << "Kick down!" << std::endl;
                   break;
